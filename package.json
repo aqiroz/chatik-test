@@ -1,0 +1,13 @@
+{
+  "name": "chatik-test",
+  "version": "1.0.0",
+  "description": "Банальный чат с никнеймами и поддержкой нескольких клиентов",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.3"
+  }
+}
