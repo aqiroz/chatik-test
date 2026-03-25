@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Банальный чат</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: #f4f4f4;
+      }
+
+      .container {
+        max-width: 860px;
+        margin: 24px auto;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 16px;
+        background: #2f6feb;
+        color: #fff;
+      }
+
+      main {
+        height: 55vh;
+        overflow-y: auto;
+        padding: 16px;
+        background: #fcfcfc;
+      }
+
+      .msg {
+        margin-bottom: 10px;
+        line-height: 1.35;
+      }
+
+      .msg .meta {
+        color: #666;
+        font-size: 12px;
+        margin-bottom: 2px;
+      }
+
+      .system {
+        color: #444;
+        font-style: italic;
+      }
+
+      .controls {
+        border-top: 1px solid #ddd;
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+
+      input,
+      button {
+        font-size: 14px;
+        padding: 10px;
+      }
+
+      input {
+        flex: 1;
+        border: 1px solid #bbb;
+        border-radius: 8px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        background: #2f6feb;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #245fce;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <strong>Банальный чат</strong>
+        <span>Онлайн: <span id="online">0</span></span>
+      </header>
+
+      <main id="messages"></main>
+
+      <div class="controls">
+        <div class="row">
+          <input id="nickname" placeholder="Твой никнейм" maxlength="24" />
+          <button id="saveNick">Сохранить ник</button>
+        </div>
+
+        <div class="row">
+          <input
+            id="message"
+            placeholder="Напиши сообщение..."
+            maxlength="500"
+            disabled
+          />
+          <button id="send" disabled>Отправить</button>
+        </div>
+
+        <div class="hint">
+          Открой эту страницу на разных компьютерах (или вкладках), чтобы общаться.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      const socket = new WebSocket(`${protocol}://${location.host}`);
+
+      const onlineEl = document.getElementById('online');
+      const messagesEl = document.getElementById('messages');
+      const nicknameInput = document.getElementById('nickname');
+      const saveNickBtn = document.getElementById('saveNick');
+      const messageInput = document.getElementById('message');
+      const sendBtn = document.getElementById('send');
+
+      function appendMessage(kind, text, meta = '') {
+        const wrap = document.createElement('div');
+        wrap.className = `msg ${kind === 'system' ? 'system' : ''}`;
+
+        if (meta) {
+          const metaDiv = document.createElement('div');
+          metaDiv.className = 'meta';
+          metaDiv.textContent = meta;
+          wrap.appendChild(metaDiv);
+        }
+
+        const body = document.createElement('div');
+        body.textContent = text;
+        wrap.appendChild(body);
+
+        messagesEl.appendChild(wrap);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function formatTime(iso) {
+        const d = new Date(iso);
+        return d.toLocaleTimeString();
+      }
+
+      function sendJson(data) {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(data));
+        }
+      }
+
+      saveNickBtn.addEventListener('click', () => {
+        const nickname = nicknameInput.value.trim();
+        sendJson({ type: 'set_nickname', nickname });
+      });
+
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendBtn.click();
+      });
+
+      sendBtn.addEventListener('click', () => {
+        const text = messageInput.value.trim();
+        sendJson({ type: 'message', text });
+        messageInput.value = '';
+      });
+
+      socket.addEventListener('open', () => {
+        appendMessage('system', 'Подключено к серверу.');
+      });
+
+      socket.addEventListener('close', () => {
+        appendMessage('system', 'Соединение закрыто. Обнови страницу для переподключения.');
+        sendBtn.disabled = true;
+        messageInput.disabled = true;
+      });
+
+      socket.addEventListener('message', (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'online') {
+          onlineEl.textContent = String(data.count);
+          return;
+        }
+
+        if (data.type === 'system') {
+          appendMessage('system', data.text);
+
+          if (data.text.startsWith('Твой ник:')) {
+            sendBtn.disabled = false;
+            messageInput.disabled = false;
+            messageInput.focus();
+          }
+          return;
+        }
+
+        if (data.type === 'error') {
+          appendMessage('system', `Ошибка: ${data.text}`);
+          return;
+        }
+
+        if (data.type === 'message') {
+          appendMessage('message', data.text, `${data.nickname} • ${formatTime(data.at)}`);
+        }
+      });
+    </script>
+  </body>
+</html>

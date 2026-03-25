@@ -1,0 +1,23 @@
+{
+  "name": "chatik-test",
+  "version": "1.1.0",
+  "description": "Банальный чат с никнеймами и поддержкой нескольких клиентов",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:exe": "pkg . --targets node18-win-x64 --output dist/chat-server.exe"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
+  }
+}
